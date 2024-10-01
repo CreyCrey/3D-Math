@@ -8,44 +8,57 @@ using UnityEngine.UI;
 
 public class PlayerMovement : MonoBehaviour
 {
-    private Rigidbody rb;
+    public PlayerData Data;
+
+    [Header("Ground Check")]
+    [SerializeField] private LayerMask groundLayer;
+    [SerializeField] private Transform groundCheck;
     private bool isGrounded;
-    private PlayerCam playerCam;
+
+    [Header("Movement")]
+    [SerializeField] private float moveSpeed = 20f;
+    [SerializeField] private float jumpForce = 20f;
+    [SerializeField] private float groundDrag;
+    private float currentMoveSpeed;
+    private float currentJumpForce;
+
+    [SerializeField] private float rotationSpeed; 
+    [SerializeField] private Transform orientation;  
+    [SerializeField] private GameObject player;
+
     //InputSystem
     private PlayerInput playerInput;
     private InputAction moveAction;
     private InputAction jumpAction;
 
-    //Balance
-    [SerializeField] private float moveSpeed = 20;
-    [SerializeField] private float jumpForce = 20f;
+    private Rigidbody rb;
 
-    [SerializeField] private LayerMask groundLayer;
-    [SerializeField] private Transform groundCheck;
-    [SerializeField] private Transform orientation;
-    [SerializeField] private float rotationSpeed;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
 
+        //Input system
         playerInput = GetComponent<PlayerInput>();
         moveAction = playerInput.actions.FindAction("Move");
         jumpAction = playerInput.actions.FindAction("Jump");
+
+        currentMoveSpeed = moveSpeed;
+        currentJumpForce = jumpForce;
     }
     
     void Update()
-    {      
+    {
         JumpPlayer();
-        
-        GroundCheck();
 
         RotateCharacter();
+
+        GroundCheck();
     }
 
     private void FixedUpdate()
     {
-        MovePlayer();
+        MovePlayer();      
     }
 
     void MovePlayer()
@@ -56,24 +69,39 @@ public class PlayerMovement : MonoBehaviour
         // Convert the 2D input into a 3D direction relative to where the player is facing
         Vector3 moveDirection = orientation.right * input.x + orientation.forward * input.y;
 
-        // Apply the move direction, scaled by moveSpeed
-        Vector3 moveVelocity = moveDirection.normalized * moveSpeed;
-
-        // Set the velocity for the Rigidbody (leave Y velocity as it is, for gravity and jumping)
-        rb.velocity = new Vector3(moveVelocity.x, rb.velocity.y, moveVelocity.z);
+        //Move player
+        rb.AddForce(moveDirection.normalized * moveSpeed, ForceMode.Force);
     }
 
     void JumpPlayer()
     {
+        if (jumpAction.triggered)
+        {
+            Debug.Log(isGrounded);
+        }
+
         if (jumpAction.triggered && isGrounded)
         {
+            //Jump player
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+
+            Debug.Log("Jump");
         }
     }
 
     void GroundCheck()
     {
         isGrounded = Physics.CheckSphere(groundCheck.position, 0.1f, groundLayer);
+
+        // handle drag
+        if (isGrounded)
+        {
+            rb.drag = groundDrag;
+        }
+        else
+        {
+            rb.drag = 0;
+        }
     }
 
     void RotateCharacter()
@@ -83,6 +111,7 @@ public class PlayerMovement : MonoBehaviour
 
         //MAKES IT LESS SNAPPY, BUT THE BODY FALLS BEHIND IN ROTATION
         //transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * rotationSpeed);
+
         transform.rotation = targetRotation;
     }
 }
